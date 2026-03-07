@@ -47,33 +47,49 @@ def run_rag_app():
         shutil.rmtree("./chroma_db_final", ignore_errors=True)
 
     # ==========================================
-    # 2. LOAD & CHUNK
+    # 2. LOAD & CHUNK ALL PDFs
     # ==========================================
-    loader = PyMuPDFLoader(target_pdf, extract_images=True, images_parser=RapidOCRBlobParser())
-    data = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
-    chunks = text_splitter.split_documents(data)
-    print(f"Ready with {len(chunks)} chunks.")
+    pdf_files = glob.glob("*.pdf")
+    if not pdf_files:
+        print("Error: No PDF files found.")
+        return
+
+    print(f"Found {len(pdf_files)} PDF(s): {pdf_files}")
+
+    all_chunks = []
+    for pdf_path in pdf_files:
+        print(f"Loading: {pdf_path}")
+        loader = PyMuPDFLoader(pdf_path, extract_images=True, images_parser=RapidOCRBlobParser())
+        data = loader.load()
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
+        chunks = text_splitter.split_documents(data)
+        
+        # Optional: add metadata to identify source file
+        for chunk in chunks:
+            chunk.metadata["source"] = pdf_path
+        
+        all_chunks.extend(chunks)
+
+    print(f"Total chunks from all PDFs: {len(all_chunks)}")
 
     # ==========================================
-    # 3. AUTO-DETECT EMBEDDINGS
+    # 3. CREATE VECTOR DATABASE (same as before)
     # ==========================================
     embed_model_name = find_embedding_model()
     if not embed_model_name:
         print("Critical Error: Could not find any valid embedding models for your key.")
         return
-        
+
     print(f"Using Embedding Model: {embed_model_name}")
-    
     embeddings = GoogleGenerativeAIEmbeddings(
         model=embed_model_name, 
         google_api_key=MY_API_KEY,
         task_type="retrieval_document"
     )
-    
-    print("Creating vector database...")
+
+    print("Creating vector database from all PDFs...")
     vector_db = Chroma.from_documents(
-        documents=chunks, 
+        documents=all_chunks, 
         embedding=embeddings,
         persist_directory="./chroma_db_final"
     )
