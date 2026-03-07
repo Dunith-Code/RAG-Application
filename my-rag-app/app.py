@@ -14,7 +14,7 @@ from langchain_core.prompts import ChatPromptTemplate
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-MY_API_KEY = "AIzaSyD5ce531vyCVdBQSTKT9-vKzDC2ykNDfbg"   # <-- Replace with your Google AI Studio API key
+MY_API_KEY = "API_KEY"   # <-- Replace with your Google AI Studio API key
 
 def find_embedding_model():
     """Find the first available embedding model for the API key."""
