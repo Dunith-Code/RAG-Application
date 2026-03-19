@@ -74,7 +74,7 @@ with st.sidebar:
                 
                 embeddings = GoogleGenerativeAIEmbeddings(model=embed_name, google_api_key=api_key)
                 if os.path.exists("./chroma_db"): shutil.rmtree("./chroma_db")
-                st.session_state.vector_db = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory="./chroma_db")
+                st.session_state.vector_db = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory="/tmp/chroma_db")
                 st.success("✅ System Online")
 
     if st.button("🗑️ Clear Memory"):
