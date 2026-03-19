@@ -1,3 +1,8 @@
+# -------------------------------------------
+# My RAG App - Happy Learning!
+# -------------------------------------------
+
+
 import os
 import glob
 import shutil
