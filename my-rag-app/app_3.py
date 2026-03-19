@@ -24,6 +24,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- 2. SECRET MANAGEMENT ---
+# This part automatically grabs the key from the "Vault"
+    if "GOOGLE_API_KEY" in st.secrets:
+        DEFAULT_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    else:
+        DEFAULT_API_KEY = ""
+
 # --- 2. LOGIC FUNCTIONS ---
 def find_models(api_key):
     try:
