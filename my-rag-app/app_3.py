@@ -14,24 +14,22 @@ from langchain_core.prompts import ChatPromptTemplate
 # --- 1. SETTINGS & STYLING ---
 st.set_page_config(page_title="RAG Intelligence v2", page_icon="🛡️", layout="wide")
 
-# Custom CSS for a professional look
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: white; }
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #ff4b4b; color: white; }
     .stTextInput>div>div>input { background-color: #262730; color: white; }
-    .status-box { padding: 20px; border-radius: 10px; background-color: #1e1e26; border: 1px solid #3e3e4a; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. SECRET MANAGEMENT ---
 # This part automatically grabs the key from the "Vault"
-    if "GOOGLE_API_KEY" in st.secrets:
-        DEFAULT_API_KEY = st.secrets["GOOGLE_API_KEY"]
-    else:
-        DEFAULT_API_KEY = ""
+if "GOOGLE_API_KEY" in st.secrets:
+    DEFAULT_API_KEY = st.secrets["GOOGLE_API_KEY"]
+else:
+    DEFAULT_API_KEY = ""
 
-# --- 2. LOGIC FUNCTIONS ---
+# --- 3. LOGIC FUNCTIONS ---
 def find_models(api_key):
     try:
         genai.configure(api_key=api_key)
@@ -40,21 +38,28 @@ def find_models(api_key):
             if not embed and 'embedContent' in m.supported_generation_methods: embed = m.name
             if not chat and 'generateContent' in m.supported_generation_methods: chat = m.name
         return embed, chat
-    except: return None, None
+    except Exception: return None, None
 
-# --- 3. SESSION STATE ---
+# --- 4. SESSION STATE ---
 if "messages" not in st.session_state: st.session_state.messages = []
 if "vector_db" not in st.session_state: st.session_state.vector_db = None
 
-# --- 4. SIDEBAR ---
+# --- 5. SIDEBAR ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2103/2103633.png", width=100)
     st.title("Control Panel")
-    api_key = st.text_input("Gemini API Key", type="password", help="Get this from AI Studio")
+    
+    # User only sees this if the Secret is missing
+    api_key = st.text_input("Gemini API Key", value=DEFAULT_API_KEY, type="password")
+    
     uploaded_file = st.file_uploader("Source Technical Document (PDF)", type="pdf")
     
     if st.button("🚀 Initialize System"):
-        if api_key and uploaded_file:
+        if not api_key:
+            st.error("Missing API Key! Please add it to Secrets or enter it above.")
+        elif not uploaded_file:
+            st.warning("Please upload a PDF file.")
+        else:
             with st.spinner("🔧 Configuring Environment..."):
                 with open("temp.pdf", "wb") as f: f.write(uploaded_file.getbuffer())
                 embed_name, chat_name = find_models(api_key)
@@ -67,45 +72,38 @@ with st.sidebar:
                 if os.path.exists("./chroma_db"): shutil.rmtree("./chroma_db")
                 st.session_state.vector_db = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory="./chroma_db")
                 st.success("✅ System Online")
-        else: st.warning("Missing Credentials or File")
 
     if st.button("🗑️ Clear Memory"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 5. MAIN CHAT INTERFACE ---
+# --- 6. MAIN CHAT INTERFACE ---
 st.subheader("🤖 AI Research Assistant")
 
-# Display Messages
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    with st.chat_message(message["role"]): st.markdown(message["content"])
 
-# Chat Logic
 if prompt := st.chat_input("Query the knowledge base..."):
     if not st.session_state.vector_db:
-        st.error("System Offline: Please initialize the Knowledge Base in the sidebar.")
+        st.error("System Offline: Please initialize in the sidebar.")
     else:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            # RETRIEVAL STEP (To show sources later)
             retriever = st.session_state.vector_db.as_retriever(search_kwargs={"k": 3})
             source_docs = retriever.invoke(prompt)
             
-            # GENERATION STEP
             llm = ChatGoogleGenerativeAI(model=st.session_state.chat_model, google_api_key=api_key, temperature=0.1)
-            template = """Use only the context to answer. Context:\n{context}\n\nQuestion: {question}"""
+            template = """Answer based only on context:\n{context}\n\nQuestion: {question}"""
             chain = ({"context": lambda x: "\n\n".join(d.page_content for d in source_docs), "question": RunnablePassthrough()} 
                      | ChatPromptTemplate.from_template(template) | llm | StrOutputParser())
             
             response = chain.invoke(prompt)
             st.markdown(response)
             
-            # ATTRACTIVE EXTRA: Show where the info came from
             with st.expander("🔍 View Source Material"):
                 for i, doc in enumerate(source_docs):
-                    st.info(f"**Source {i+1} (Page {doc.metadata.get('page', 'Unknown')}):**\n\n{doc.page_content[:300]}...")
+                    st.info(f"**Source {i+1}:** {doc.page_content[:300]}...")
 
             st.session_state.messages.append({"role": "assistant", "content": response})
