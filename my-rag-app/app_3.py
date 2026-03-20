@@ -56,7 +56,8 @@ with st.sidebar:
     # User only sees this if the Secret is missing
     api_key = st.text_input("Gemini API Key", value=DEFAULT_API_KEY, type="password")
     
-    uploaded_file = st.file_uploader("Source Technical Document (PDF)", type="pdf" accept_multiple_files=True)
+    
+    uploaded_files = st.file_uploader("Source Technical Documents (PDFs)", type="pdf", accept_multiple_files=True)
     
     if st.button("🚀 Initialize System"):
         if api_key and uploaded_files:
