@@ -97,6 +97,10 @@ with st.sidebar:
                 )
                 st.success(f"✅ System Online with {len(uploaded_files)} documents!")
 
+    if st.button("🗑️ Clear Memory"):
+        st.session_state.messages = []
+        st.rerun()
+
 # --- 6. MAIN CHAT INTERFACE ---
 st.subheader("🤖 AI Research Assistant")
 
