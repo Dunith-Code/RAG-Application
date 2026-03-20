@@ -82,7 +82,7 @@ with st.sidebar:
         st.rerun()
 
 # --- 6. MAIN CHAT INTERFACE ---
-st.subheader("🤖 AI Research Assistant")
+st.subheader("🤖 AI PDF ASSISTANT")
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]): st.markdown(message["content"])

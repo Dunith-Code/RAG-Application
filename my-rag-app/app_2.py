@@ -31,7 +31,7 @@ def find_models(api_key):
 # ==========================================
 # 2. STREAMLIT GUI CONFIGURATION
 # ==========================================
-st.set_page_config(page_title="RAG Research Bot", page_icon="🤖")
+st.set_page_config(page_title="RAG PDF Bot", page_icon="🤖")
 st.title("📄 PDF Intelligence System")
 
 # Initialize "Database" for Chat History in memory

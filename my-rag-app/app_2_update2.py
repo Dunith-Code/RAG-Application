@@ -210,7 +210,7 @@ with st.sidebar:
 # ===================================================================
 # 6. MAIN CHAT INTERFACE
 # ===================================================================
-st.subheader("🤖 AI Research Assistant")
+st.subheader("🤖 AI PDF ASSISTANT")
 
 # Display chat history
 for message in st.session_state.messages:
