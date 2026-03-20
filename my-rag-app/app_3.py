@@ -5,6 +5,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import streamlit as st
 import os
 import shutil
+import json
+from datetime import datetime
 import google.generativeai as genai
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.document_loaders.parsers import RapidOCRBlobParser
@@ -17,6 +19,11 @@ from langchain_core.prompts import ChatPromptTemplate
 
 # --- 1. SETTINGS & STYLING ---
 st.set_page_config(page_title="PDF Intelligence System", page_icon="🛡️", layout="wide")
+
+# Directory for Chat History
+HISTORY_DIR = "chat_sessions"
+if not os.path.exists(HISTORY_DIR):
+    os.makedirs(HISTORY_DIR)
 
 st.markdown("""
     <style>
@@ -44,6 +51,21 @@ def find_models(api_key):
         return embed, chat
     except Exception: return None, None
 
+# NEW: Save function
+def save_chat_to_file():
+    if st.session_state.messages:
+        # Use first question as filename, sanitize it
+        first_msg = st.session_state.messages[0]["content"][:15].strip().replace(" ", "_")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{HISTORY_DIR}/Chat_{first_msg}_{timestamp}.json"
+        with open(filename, "w") as f:
+            json.dump(st.session_state.messages, f)
+
+# NEW: Load function
+def load_chat_from_file(file_path):
+    with open(f"{HISTORY_DIR}/{file_path}", "r") as f:
+        st.session_state.messages = json.load(f)
+
 # --- 4. SESSION STATE ---
 if "messages" not in st.session_state: st.session_state.messages = []
 if "vector_db" not in st.session_state: st.session_state.vector_db = None
@@ -53,6 +75,26 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2103/2103633.png", width=100)
     st.title("Control Panel")
     
+    # --- NEW: CHAT HISTORY SECTION ---
+    st.subheader("📜 Saved Histories")
+
+    if st.button("➕ Start New Chat"):
+        save_chat_to_file() # Save current before clearing
+        st.session_state.messages = []
+        st.rerun()
+
+# List available history files
+    history_files = os.listdir(HISTORY_DIR)
+    if history_files:
+        for f in sorted(history_files, reverse=True):
+            if st.button(f"📁 {f[:25]}...", key=f):
+                load_chat_from_file(f)
+                st.rerun()
+    else:
+        st.info("No saved chats yet.")
+    
+    st.divider()
+
     # User only sees this if the Secret is missing
     api_key = st.text_input("Gemini API Key", value=DEFAULT_API_KEY, type="password")
     
@@ -97,8 +139,10 @@ with st.sidebar:
                 )
                 st.success(f"✅ System Online with {len(uploaded_files)} documents!")
 
-    if st.button("🗑️ Clear Memory"):
+    if st.button("🗑️ Reset All"):
+        if os.path.exists(HISTORY_DIR): shutil.rmtree(HISTORY_DIR)
         st.session_state.messages = []
+        st.session_state.vector_db = None
         st.rerun()
 
 # --- 6. MAIN CHAT INTERFACE ---
