@@ -175,7 +175,7 @@ with st.sidebar:
 # ===================================================================
 # 6. MAIN CHAT INTERFACE
 # ===================================================================
-st.subheader("🤖 AI PDF ASSISTANT")
+st.subheader("🤖 PDF Intelligence System")
 
 # Display chat messages
 for message in st.session_state.messages:
