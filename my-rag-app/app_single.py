@@ -56,45 +56,30 @@ with st.sidebar:
     # User only sees this if the Secret is missing
     api_key = st.text_input("Gemini API Key", value=DEFAULT_API_KEY, type="password")
     
-    uploaded_file = st.file_uploader("Source Technical Document (PDF)", type="pdf" accept_multiple_files=True)
+    uploaded_file = st.file_uploader("Source Technical Document (PDF)", type="pdf")
     
     if st.button("🚀 Initialize System"):
-        if api_key and uploaded_files:
-            with st.spinner(f"🔧 Processing {len(uploaded_files)} files..."):
-                all_chunks = [] # Master list for all PDF data
-                
-                for uploaded_file in uploaded_files:
-                    # Save each file temporarily
-                    temp_path = f"temp_{uploaded_file.name}"
-                    with open(temp_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                    
-                    # Load and chunk this specific file
-                    loader = PyMuPDFLoader(temp_path, extract_images=True, images_parser=RapidOCRBlobParser())
-                    data = loader.load()
-                    
-                    # We add the filename to metadata so the AI knows which file is which
-                    for doc in data:
-                        doc.metadata["source_file"] = uploaded_file.name
-                    
-                    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
-                    chunks = text_splitter.split_documents(data)
-                    all_chunks.extend(chunks) # Add to the master list
-                    
-                    os.remove(temp_path) # Clean up temp file
-
-                # Build ONE database for all chunks
+        if not api_key:
+            st.error("Missing API Key! Please add it to Secrets or enter it above.")
+        elif not uploaded_file:
+            st.warning("Please upload a PDF file.")
+        else:
+            with st.spinner("🔧 Configuring Environment..."):
+                with open("temp.pdf", "wb") as f: f.write(uploaded_file.getbuffer())
                 embed_name, chat_name = find_models(api_key)
                 st.session_state.chat_model = chat_name
-                embeddings = GoogleGenerativeAIEmbeddings(model=embed_name, google_api_key=api_key)
                 
-                if os.path.exists("/tmp/chroma_db"): shutil.rmtree("/tmp/chroma_db")
-                st.session_state.vector_db = Chroma.from_documents(
-                    documents=all_chunks, 
-                    embedding=embeddings, 
-                    persist_directory="/tmp/chroma_db"
-                )
-                st.success(f"✅ System Online with {len(uploaded_files)} documents!")
+                loader = PyMuPDFLoader("temp.pdf", extract_images=True, images_parser=RapidOCRBlobParser())
+                chunks = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150).split_documents(loader.load())
+                
+                embeddings = GoogleGenerativeAIEmbeddings(model=embed_name, google_api_key=api_key)
+                if os.path.exists("./chroma_db"): shutil.rmtree("./chroma_db")
+                st.session_state.vector_db = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory="/tmp/chroma_db")
+                st.success("✅ System Online")
+
+    if st.button("🗑️ Clear Memory"):
+        st.session_state.messages = []
+        st.rerun()
 
 # --- 6. MAIN CHAT INTERFACE ---
 st.subheader("🤖 AI Research Assistant")
