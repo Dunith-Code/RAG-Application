@@ -9,3 +9,4 @@ langchain-core
 pymupdf
 rapidocr-onnxruntime
 pysqlite3-binary
+faiss-cpu
